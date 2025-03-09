@@ -99,9 +99,9 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
                                   child: _buildPlanTile(plan),
                                 ),
                                 child: DragTarget<Plan>(
-                                  onAcceptWithDetails: (draggedPlan) {
+                                  onAcceptWithDetails: (details) {
                                     setState(() {
-                                      draggedPlan.date = date;
+                                      details.data.date = date; // Accessing 'data' to get the dragged Plan object
                                     });
                                   },
                                   builder: (context, candidateData, rejectedData) {
