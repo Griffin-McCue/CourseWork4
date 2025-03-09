@@ -1,122 +1,249 @@
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const AdoptionTravelPlannerApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AdoptionTravelPlannerApp extends StatelessWidget {
+  const AdoptionTravelPlannerApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false,
+      title: 'Adoption & Travel Planner',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const PlanManagerScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+class Plan {
+  String name;
+  String description;
+  DateTime date;
+  bool isCompleted;
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Plan({
+    required this.name,
+    required this.description,
+    required this.date,
+    this.isCompleted = false,
+  });
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class PlanManagerScreen extends StatefulWidget {
+  const PlanManagerScreen({super.key});
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  @override
+  State<PlanManagerScreen> createState() => _PlanManagerScreenState();
+}
+
+class _PlanManagerScreenState extends State<PlanManagerScreen> {
+  final List<Plan> plans = [];
+  DateTime _selectedDay = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+      appBar: AppBar(title: const Text('Adoption & Travel Planner')),
+      body: Column(
+        children: [
+          // Calendar Widget
+          TableCalendar(
+            focusedDay: _selectedDay,
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(2100, 12, 31),
+            calendarFormat: CalendarFormat.month,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+              });
+            },
+          ),
+          Expanded(
+            child: plans.isEmpty
+                ? const Center(child: Text('No plans yet. Tap + to add a plan!'))
+                : ListView(
+                    children: _groupPlansByDate().entries.map((entry) {
+                      DateTime date = entry.key;
+                      List<Plan> dayPlans = entry.value;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              "${date.toLocal()}".split(' ')[0],
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          ...dayPlans.map((plan) => Draggable<Plan>(
+                                data: plan,
+                                feedback: Material(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(plan.name, style: const TextStyle(color: Colors.white)),
+                                  ),
+                                ),
+                                childWhenDragging: Opacity(
+                                  opacity: 0.5,
+                                  child: _buildPlanTile(plan),
+                                ),
+                                child: DragTarget<Plan>(
+                                  onAcceptWithDetails: (draggedPlan) {
+                                    setState(() {
+                                      draggedPlan.date = date;
+                                    });
+                                  },
+                                  builder: (context, candidateData, rejectedData) {
+                                    return _buildPlanTile(plan);
+                                  },
+                                ),
+                              ))
+                        ],
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: _showCreatePlanDialog,
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
+  }
+
+  
+  void _showCreatePlanDialog() {
+    String name = '';
+    String description = '';
+    DateTime selectedDate = _selectedDay;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Create New Plan'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(labelText: 'Plan Name'),
+                onChanged: (value) => name = value,
+              ),
+              TextField(
+                decoration: const InputDecoration(labelText: 'Description'),
+                onChanged: (value) => description = value,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (name.isNotEmpty && description.isNotEmpty) {
+                  setState(() {
+                    plans.add(Plan(name: name, description: description, date: selectedDate));
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+ 
+  Widget _buildPlanTile(Plan plan) {
+    return GestureDetector(
+      onDoubleTap: () => _deletePlan(plan), 
+      child: ListTile(
+        title: Text(
+          plan.name,
+          style: TextStyle(decoration: plan.isCompleted ? TextDecoration.lineThrough : null),
+        ),
+        subtitle: Text(plan.description),
+        trailing: const Icon(Icons.drag_handle),
+        onLongPress: () => _editPlan(plan),
+      ),
+    );
+  }
+
+  
+  void _editPlan(Plan plan) {
+    String updatedName = plan.name;
+    String updatedDescription = plan.description;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Plan'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: TextEditingController(text: updatedName),
+                decoration: const InputDecoration(labelText: 'Plan Name'),
+                onChanged: (value) => updatedName = value,
+              ),
+              TextField(
+                controller: TextEditingController(text: updatedDescription),
+                decoration: const InputDecoration(labelText: 'Description'),
+                onChanged: (value) => updatedDescription = value,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  plan.name = updatedName;
+                  plan.description = updatedDescription;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+ 
+  void _deletePlan(Plan plan) {
+    setState(() {
+      plans.remove(plan);
+    });
+  }
+
+  
+  Map<DateTime, List<Plan>> _groupPlansByDate() {
+    Map<DateTime, List<Plan>> groupedPlans = {};
+
+    for (var plan in plans) {
+      DateTime dateOnly = DateTime(plan.date.year, plan.date.month, plan.date.day);
+      if (!groupedPlans.containsKey(dateOnly)) {
+        groupedPlans[dateOnly] = [];
+      }
+      groupedPlans[dateOnly]!.add(plan);
+    }
+
+    return groupedPlans;
   }
 }
